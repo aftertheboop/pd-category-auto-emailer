@@ -19,7 +19,11 @@ function pd_category_auto_emailer_init($post_ID, $post, $update) {
     
     $Auto_emailer = new PD_Category_Auto_Emailer($post_ID, $post, $update);
        
-    $Auto_emailer->pre_email();
+    if($Auth_emailer->can_send()) {
+    
+        $Auto_emailer->pre_email();
+        
+    }
     
     exit;
 }
@@ -38,6 +42,26 @@ class PD_Category_Auto_Emailer {
     }
     
     /**
+     * Can Send
+     * 
+     * Checks whether the plugin can proceeed to process and send the notification
+     * @return boolean
+     */
+    public function can_send() {
+        
+        $sent_status = $this->_get_sent_status();
+        $post_status = $this->post->post_status;
+        
+        // Email must be unsent and post must be published
+        if($sent_status == 0 && $post_status == 'publish') {
+            return true;
+        } else {
+            return false;
+        }
+        
+    }
+    
+    /**
      * Pre Email
      * 
      * Prepares the content, addresses, sent flag and authority to send the auto
@@ -45,8 +69,28 @@ class PD_Category_Auto_Emailer {
      */
     public function pre_email() {
         
+        // Get all addresses to end to
         $this->emails = $this->_get_category_email_addresses();
+        // Set email template
         $this->template = $this->_prepare_template();
+        
+    }
+    
+    /**
+     * Get Sent Status
+     * 
+     * Gets the value of the email sent flag
+     * @return int
+     */
+    private function _get_sent_status() {
+        
+        $status = get_post_meta($this->post_id, 'pd_cat_email_sent', true);
+        
+        if(strlen($status) > 0) {
+            return $status;
+        } else {
+            return 0;
+        }
         
     }
     
