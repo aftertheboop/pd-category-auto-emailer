@@ -31,6 +31,7 @@ class PD_Category_Auto_Emailer {
         $this->post_id = $post_ID;
         $this->post = $post;
         $this->update = $update;
+        $this->template_path = plugin_dir_url(__FILE__) . 'templates/default.html';
         
         $this->emails = array();
         $this->template = '';
@@ -68,7 +69,7 @@ class PD_Category_Auto_Emailer {
             ),
         );  
         
-        $html = file_get_contents(plugin_dir_url(__FILE__) . 'templates/default.html', false, stream_context_create($arrContextOptions));
+        $html = file_get_contents($this->template_path, false, stream_context_create($arrContextOptions));
         
         // Correct code. Change back on live
         // $fh = file_get_contents(plugin_dir_url(__FILE__) . "templates/default.html");
