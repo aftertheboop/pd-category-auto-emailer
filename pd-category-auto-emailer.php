@@ -13,7 +13,107 @@ License: Private
 Text Domain: pd-category-tracker
 */
 
+add_action( 'save_post', 'pd_category_auto_emailer_init', 10, 3 );
 
+function pd_category_auto_emailer_init($post_ID, $post, $update) {
+    
+    $Auto_emailer = new PD_Category_Auto_Emailer($post_ID, $post, $update);
+       
+    $Auto_emailer->pre_email();
+    
+    exit;
+}
+
+class PD_Category_Auto_Emailer {
+    
+    public function __construct($post_ID, $post, $update) {
+        
+        $this->post_id = $post_ID;
+        $this->post = $post;
+        $this->update = $update;
+        
+        $this->emails = array();
+        $this->template = '';
+    }
+    
+    /**
+     * Pre Email
+     * 
+     * Prepares the content, addresses, sent flag and authority to send the auto
+     * email
+     */
+    public function pre_email() {
+        
+        $this->emails = $this->_get_category_email_addresses();
+        $this->template = $this->_prepare_template();
+        
+    }
+    
+    /**
+     * Prepare Template
+     * 
+     * Prepares the Email template by substituting the relevant information on
+     * the document.
+     * @return String
+     */
+    private function _prepare_template() {
+       // print_r(scandir('../wp-content/plugins/pd-category-auto-emailer'));
+        //
+        
+        // Hack while on dev
+        $arrContextOptions=array(
+            "ssl"=>array(
+                "verify_peer"=>false,
+                "verify_peer_name"=>false,
+            ),
+        );  
+        
+        $html = file_get_contents(plugin_dir_url(__FILE__) . 'templates/default.html', false, stream_context_create($arrContextOptions));
+        
+        // Correct code. Change back on live
+        // $fh = file_get_contents(plugin_dir_url(__FILE__) . "templates/default.html");
+                
+        // Replace blog name
+        $html = str_replace('$$BLOGNAME$$', get_bloginfo('name'), $html);
+        
+        // Replace article permalink
+        $html = str_replace('$$PERMALINK$$', get_the_permalink($this->post_id), $html);
+        // Replace article title
+        $html = str_replace('$$POSTTITLE$$', get_the_title($this->post_id), $html);
+        
+        return $html;
+        
+    }
+    
+    
+    
+    /**
+     * Get Category Email Addresses
+     * 
+     * Get the contents of all `pd_cat_email` fields of the article's associated
+     * categories. Returns an array of field values.
+     * @return Array
+     */
+    private function _get_category_email_addresses() {
+        
+        $categories = wp_get_post_categories($this->post_id);
+        $emails = array();
+        
+        foreach($categories as $category) {
+            
+            // Get the contents of the pd_cat_email meta field
+            $pd_cat_email = get_term_meta($category, 'pd_cat_email', true);
+            // Only add the content if it has a non-zero length.
+            // Validation is handled on the initial category POST 
+            if(strlen($pd_cat_email) > 0) {
+                $emails[] = $pd_cat_email;
+            }
+        }
+        
+        return $emails;
+        
+    }
+}
 
 /* Category Auto-Email Fields ----------------------------------------------- */
 add_action('category_add_form_fields', 'pd_taxonomy_add_new_meta_field', 10, 1);
