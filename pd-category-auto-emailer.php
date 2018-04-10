@@ -10,35 +10,114 @@ Version: 1.0
 Author: Rory Molyneux
 Author URI: http://pitchdark.co.za
 License: Private
-Text Domain: pd-category-tracker
+Text Domain: pd-category-auto-emailer
 */
 
-add_action( 'save_post', 'pd_category_auto_emailer_init', 10, 3 );
+add_action( 'transition_post_status', 'pd_category_auto_emailer_init', 10, 3 );
 
+function pd_category_auto_emailer_init($new_status, $old_status, $post) {
+    
+    if ( ( $old_status === 'draft' || $old_status === 'auto-draft'  ) && $new_status === 'publish' ) {
+        
+        $Auto_emailer = new PD_Category_Auto_Emailer($post->ID, $post);
+        
+        // Add in a checkbox option to ignore auto-send
+        
+        // Emailer can be sent
+        if($Auto_emailer->can_send()) {
+            // Prepare the emailer
+            if($Auto_emailer->pre_email()) {
+                // Check that there are email addresses available
+                if((is_array($Auto_emailer->get_emails()) && empty($Auto_emailer->get_emails())) || strlen($Auto_emailer->get_emails() > 0)) {
+                    
+                    return false;
+                    
+                } else {
+                    // Send email
+                    wp_mail($Auto_emailer->get_emails(), '[Awsum School News] New AWSUM Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                }
+                
+            }
+            
+        } else {
+            
+            return new WP_Error('pd_auto_emailer_failed', __( 'Article Auto-emailer could not be sent', 'pd-category-auto-emailer'));
+            
+        }
+        
+    }    
+    
+}
+
+
+/*
 function pd_category_auto_emailer_init($post_ID, $post, $update) {
     
     $Auto_emailer = new PD_Category_Auto_Emailer($post_ID, $post, $update);
-       
-    if($Auth_emailer->can_send()) {
+   
+    if($Auto_emailer->can_send()) {
     
         $Auto_emailer->pre_email();
         
     }
     
-    exit;
-}
+    
+}*/
 
 class PD_Category_Auto_Emailer {
     
-    public function __construct($post_ID, $post, $update) {
+    public function __construct($post_ID, $post) {
         
         $this->post_id = $post_ID;
         $this->post = $post;
-        $this->update = $update;
         $this->template_path = plugin_dir_url(__FILE__) . 'templates/default.html';
         
         $this->emails = array();
         $this->template = '';
+    }
+    
+    /**
+     * Get Headers
+     * 
+     * Returns email headers
+     * @return string
+     */
+    public function get_headers() {
+        
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+        
+        return $headers;
+        
+    }
+    
+    /**
+     * Get Message
+     * 
+     * Returns the message body
+     * @return string 
+     */
+    public function get_message() {
+        
+        return $this->template;
+        
+    }
+    
+    /**
+     * Get Emails
+     * 
+     * Returns a list of all email addresses to send to
+     * @param bool $string
+     * @return array|string
+     */
+    public function get_emails($string = false) {
+        
+        if(!$string) {
+            return $this->emails;
+        } else {
+            return implode(', ', $this->emails);
+        }
+        
     }
     
     /**
@@ -51,12 +130,16 @@ class PD_Category_Auto_Emailer {
         
         $sent_status = $this->_get_sent_status();
         $post_status = $this->post->post_status;
-        
+                
         // Email must be unsent and post must be published
         if($sent_status == 0 && $post_status == 'publish') {
+            
             return true;
+            
         } else {
+            
             return false;
+            
         }
         
     }
@@ -70,9 +153,18 @@ class PD_Category_Auto_Emailer {
     public function pre_email() {
         
         // Get all addresses to end to
-        $this->emails = $this->_get_category_email_addresses();
-        // Set email template
-        $this->template = $this->_prepare_template();
+        try {
+            $this->emails = $this->_get_category_email_addresses();
+            // Set email template
+            $this->template = $this->_prepare_template();
+            
+            return true;
+            
+        } catch (Exception $e) {
+            return false;
+        }
+                
+        
         
     }
     
