@@ -28,13 +28,18 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
             // Prepare the emailer
             if($Auto_emailer->pre_email()) {
                 // Check that there are email addresses available
-                if((is_array($Auto_emailer->get_emails()) && empty($Auto_emailer->get_emails())) || strlen($Auto_emailer->get_emails() > 0)) {
+                if((is_array($Auto_emailer->get_emails()) && empty($Auto_emailer->get_emails())) || strlen($Auto_emailer->get_emails(true) > 0)) {
+                    
+                    $Auto_emailer->_log('Cannot send email. No addresses');
                     
                     return false;
                     
                 } else {
                     // Send email
-                    wp_mail($Auto_emailer->get_emails(), '[' . bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    $sent = wp_mail(get_option('admin_email'), '[' . bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    $Auto_emailer->_log($Auto_emailer->get_message());
+                    $Auto_emailer->_log(json_encode($sent));
+                    $Auto_emailer->_log('Email Sent!');
                 }
                 
             }
@@ -79,7 +84,7 @@ class PD_Category_Auto_Emailer {
         $this->template = '';
     }
     
-    private function _log($message) {
+    public function _log($message) {
         
         if($this->debug == false) {
             return false;
@@ -103,6 +108,7 @@ class PD_Category_Auto_Emailer {
         
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+        $headers .= "Bcc: " . $this->get_emails(true);
         
         return $headers;
         
