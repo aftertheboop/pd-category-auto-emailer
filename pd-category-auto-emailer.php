@@ -79,6 +79,17 @@ class PD_Category_Auto_Emailer {
         $this->template = '';
     }
     
+    private function _log($message) {
+        
+        if($this->debug) {
+            
+            $fh = fopen(plugin_dir_url(__FILE__) . 'debug.log', 'a');
+            fwrite('[' . date('Y-m-d H:i:s') . '] ' . $message . "\r\n");
+            fclose($fh);
+            
+        }
+    }
+    
     
     
     /**
@@ -139,9 +150,13 @@ class PD_Category_Auto_Emailer {
         // Email must be unsent and post must be published
         if($sent_status == 0 && $post_status == 'publish') {
             
+            $this->_log('Can send email');
+            
             return true;
             
         } else {
+            
+            $this->_log('Cannot send email: Sent Status: ' . $sent_status . ' Post Status: ' . $post_status);
             
             return false;
             
@@ -162,6 +177,9 @@ class PD_Category_Auto_Emailer {
             $this->emails = $this->_get_category_email_addresses();
             // Set email template
             $this->template = $this->_prepare_template();
+            
+            $this->_log('Emails: ' . $this->emails);
+            $this->_log('Template fetched');
             
             return true;
             
