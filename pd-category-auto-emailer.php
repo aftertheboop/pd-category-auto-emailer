@@ -34,7 +34,7 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
                     
                 } else {
                     // Send email
-                    wp_mail($Auto_emailer->get_emails(), '[Awsum School News] New AWSUM Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    wp_mail($Auto_emailer->get_emails(), '[' . bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
                 }
                 
             }
@@ -72,9 +72,14 @@ class PD_Category_Auto_Emailer {
         $this->post = $post;
         $this->template_path = plugin_dir_url(__FILE__) . 'templates/default.html';
         
+        // debugging / logging
+        $this->debug = false;
+        
         $this->emails = array();
         $this->template = '';
     }
+    
+    
     
     /**
      * Get Headers
