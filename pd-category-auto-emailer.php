@@ -73,7 +73,7 @@ class PD_Category_Auto_Emailer {
         $this->template_path = plugin_dir_url(__FILE__) . 'templates/default.html';
         
         // debugging / logging
-        $this->debug = false;
+        $this->debug = true;
         
         $this->emails = array();
         $this->template = '';
@@ -81,13 +81,14 @@ class PD_Category_Auto_Emailer {
     
     private function _log($message) {
         
-        if($this->debug) {
-            
-            $fh = fopen(plugin_dir_url(__FILE__) . 'debug.log', 'a');
-            fwrite('[' . date('Y-m-d H:i:s') . '] ' . $message . "\r\n");
-            fclose($fh);
-            
+        if($this->debug == false) {
+            return false;
         }
+        
+        $log = fopen(plugin_dir_path( __FILE__ ) . 'errorlog.txt', "a") or die('Could not open log file');
+        fwrite($log, '[' . date('Y-m-d H:i:s') . '] - ' . $message . "\r\n");
+        fclose($log);
+
     }
     
     
@@ -178,7 +179,7 @@ class PD_Category_Auto_Emailer {
             // Set email template
             $this->template = $this->_prepare_template();
             
-            $this->_log('Emails: ' . $this->emails);
+            $this->_log('Emails: ' . json_encode($this->emails));
             $this->_log('Template fetched');
             
             return true;
