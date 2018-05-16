@@ -13,6 +13,12 @@ License: Private
 Text Domain: pd-category-auto-emailer
 */
 
+add_action('admin_menu', 'pd_category_auto_emailer_admin');
+
+function pd_category_auto_emailer_admin() {
+    include_once('pd-admin-options.php');
+}
+
 add_action( 'transition_post_status', 'pd_category_auto_emailer_init', 10, 3 );
 
 function pd_category_auto_emailer_init($new_status, $old_status, $post) {
@@ -42,7 +48,7 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
                 } else {
                                         
                     // Send email
-                    $sent = wp_mail($Auto_emailer->get_emails(true), '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    $sent = wp_mail('awsumnews@tiemedia.co.za', '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
                     //$Auto_emailer->_log($Auto_emailer->get_message());
                     $Auto_emailer->_log(json_encode($sent));
                     $Auto_emailer->_log('Email Sent!');
@@ -114,7 +120,7 @@ class PD_Category_Auto_Emailer {
         
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
-        $headers .= "Bcc: " . $this->get_emails(true);
+        $headers .= "Bcc: " . $this->get_emails(true) . ',rory@pitchdark.co.za';
         
         return $headers;
         
@@ -252,7 +258,7 @@ class PD_Category_Auto_Emailer {
         // Replace article permalink
         $html = str_replace('$$PERMALINK$$', get_the_permalink($this->post_id), $html);
         // Replace article title
-        $html = str_replace('$$POSTTITLE$$', get_the_title($this->post_id), $html);
+        $html = str_replace('$$POSTTITLE$$', htmlentities(get_the_title($this->post_id)), $html);
         
         return $html;
         
@@ -279,7 +285,12 @@ class PD_Category_Auto_Emailer {
             // Only add the content if it has a non-zero length.
             // Validation is handled on the initial category POST 
             if(strlen($pd_cat_email) > 0) {
-                $emails[] = $pd_cat_email;
+                
+                $emails_arr = explode(",", $pd_cat_email);
+                
+                $emails = array_merge($emails, $emails_arr);
+                
+                //$emails[] = $pd_cat_email;
             }
         }
         
@@ -393,10 +404,13 @@ class PD_Category_Auto_Emailer {
                   <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
                     <tr>
                       <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">Hi there,</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">A new post has just been made on <b>$$BLOGNAME$$</b> that is relevant to you.</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">Click the link to read:</p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">Dear school,</p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">A new article about your school has been posted on $$BLOGNAME$$. Click the link to read:</p>
                         <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b><a href="$$PERMALINK$$" title="$$POSTNAME$$">$$POSTTITLE$$</a></b></p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b>Please share on your school\'s Facebook page.</b></p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b>Please send your school news to <a href="mailto:awsumnews@tiemedia.co.za">awsumnews@tiemedia.co.za</a>.</b></p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b>We welcome daily school news for placement</b> and we invite you to send us any sport (internal and external), cultural and academic achievements as they happen. No school is limited with regards to the amount of news.</p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">More than 1 700 schools countrywide are part of this network and the news is loaded per region to provide each school with national and regional exposure - free of charge. We publish text, video and audio clips.</p>
                         <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">&nbsp;</p>
                         <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">Kind regards,</p>
                         <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">The <b>$$BLOGNAME$$</b> Team</p>
@@ -414,7 +428,7 @@ class PD_Category_Auto_Emailer {
               <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
                 <tr>
                   <td class="content-block" style="font-family: sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
-                    <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;"></span>
+                    <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">This email was automatically generated by $$BLOGNAME$$ on ' . date('j F Y H:i') . '</span>
                     <br>Please reply to this email if you no longer wish to receive these notifications.
                   </td>
                 </tr>
@@ -441,7 +455,7 @@ function pd_taxonomy_add_new_meta_field() {
     ?>   
     <div class="form-field">
         <label for="pd_cat_email"><?php _e('Category Auto Email', 'pd'); ?></label>
-        <input type="email" name="pd_cat_email" id="pd_cat_email">
+        <input type="text" name="pd_cat_email" id="pd_cat_email">
         <p class="description"><?php _e('Enter the email address of a person to receive an email every time a post is made to this category', 'pd'); ?></p>
     </div>
     <?php
@@ -456,7 +470,7 @@ function pd_taxonomy_edit_meta_field($term) {
     <tr class="form-field">
         <th scope="row" valign="top"><label for="pd_cat_email"><?php _e('Category Auto Email', 'pd'); ?></label></th>
         <td>
-            <input type="email" name="pd_cat_email" id="pd_cat_email" value="<?php echo esc_attr($pd_cat_email) ? esc_attr($pd_cat_email) : ''; ?>">
+            <input type="text" name="pd_cat_email" id="pd_cat_email" value="<?php echo esc_attr($pd_cat_email) ? esc_attr($pd_cat_email) : ''; ?>">
             <p class="description"><?php _e('Enter the email address of a person to receive an email every time a post is made to this category', 'pd'); ?></p>
         </td>
     </tr>
