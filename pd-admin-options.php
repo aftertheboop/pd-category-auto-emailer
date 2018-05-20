@@ -18,7 +18,7 @@ class PD_Category_Auto_Emailer_Admin {
     
     private function init_menu_item() {
         
-        add_menu_page( 'Category Auto Emailer Settings', 'Auto-Emailer', 'manage_options', 'pd_category_auto_emailaer-plugin', array($this, 'pd_auto_emailer_admin_init') );
+        add_menu_page( 'Category Auto Emailer Settings', 'Auto-Emailer', 'manage_options', 'pd_category_auto_emailer-plugin', array($this, 'pd_auto_emailer_admin_init') );
         
     }
     
@@ -57,6 +57,9 @@ class PD_Category_Auto_Emailer_Admin {
         //$html .= '<textarea name="pd-auto-body" id="pd-auto-body" class="regular-text" style="width: 100%" rows="20"></textarea>';
         $html .= '<p class="description">The following aliases will be substituted with content:<br/>$$BLOGNAME$$, $$PERMALINK$$, $$POSTNAME$$, $$POSTTITLE$$<br/>Use them to substitute dynamic content in your email</p>';
         $html .= '</td>';
+        $html .= '</tr>';
+        $html .= '<tr>';
+        $html .= '<td></td><td><input type="submit" name="submit" value="Save Options" class="button button-primary button-large" /></td>';
         $html .= '</tr>';
         $html .= '</table>';
         $html .= '</div>';
