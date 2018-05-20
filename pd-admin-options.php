@@ -12,10 +12,9 @@ class PD_Category_Auto_Emailer_Admin {
     
     private function init_menu_item() {
         
-        add_menu_page( 'Category Auto Emailer Settings', 'Auto-Emailer', 'manage_options', 'pd_category_auto_emailer-plugin', array($this, 'pd_auto_emailer_admin_init') );
-        
+        add_menu_page( 'Category Auto Emailer Settings', 'Auto-Emailer', 'manage_options', 'pd_category_auto_emailer_plugin', array($this, 'pd_auto_emailer_admin_init') );
     }
-    
+        
     public function pd_auto_emailer_admin_init() {
         
         if ( !current_user_can( 'manage_options' ) )  {

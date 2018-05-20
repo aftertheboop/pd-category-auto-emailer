@@ -48,7 +48,7 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
                 } else {
                                         
                     // Send email
-                    $sent = wp_mail('awsumnews@tiemedia.co.za', '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    $sent = wp_mail($pd_category_auto_emailer_admin->get_pd_from(), '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
                     //$Auto_emailer->_log($Auto_emailer->get_message());
                     $Auto_emailer->_log(json_encode($sent));
                     $Auto_emailer->_log('Email Sent!');
@@ -120,7 +120,7 @@ class PD_Category_Auto_Emailer {
         
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
-        $headers .= "Bcc: " . $this->get_emails(true) . ',rory@pitchdark.co.za';
+        $headers .= "Bcc: " . $this->get_emails(true) . ',' . $pd_category_auto_emailer_admin->get_pd_bcc();
         
         return $headers;
         
