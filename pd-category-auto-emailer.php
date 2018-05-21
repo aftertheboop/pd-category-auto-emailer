@@ -6,41 +6,57 @@
 /*
 Plugin Name: PD Category Auto Emailer
 Description: Sends an automated email to an email address set per category upon publishing a post for the first time
-Version: 1.0
+Version: 1.1
 Author: Rory Molyneux
 Author URI: http://pitchdark.co.za
 License: Private
 Text Domain: pd-category-auto-emailer
 */
 
-add_action('admin_menu', 'pd_category_auto_emailer_admin');
+// Include Admin class
 include_once('pd-admin-options.php');
 
-$pd_category_auto_emailer_admin = new PD_Category_Auto_Emailer_Admin();
+// Admin integration
+add_action('admin_menu', 'pd_category_auto_emailer_admin');
 
+// Run main plugin activity on post status change
+add_action( 'transition_post_status', 'pd_category_auto_emailer_init', 10, 3 );
+
+/**
+ * PD Category Auto Emailer Admin
+ * 
+ * Init the Admin section
+ * @return void
+ */
 function pd_category_auto_emailer_admin() {
-    
-    global $pd_category_auto_emailer_admin;
-    
+    // Create class
+    $pd_category_auto_emailer_admin = new PD_Category_Auto_Emailer_Admin();
+    // Init
     $pd_category_auto_emailer_admin->init_menu_item();
 }
 
-
-add_action( 'transition_post_status', 'pd_category_auto_emailer_init', 10, 3 );
-
+/**
+ * PD Category Auto Emailer Init
+ * 
+ * Run the main automation for the plugin
+ * 
+ * @param String $new_status
+ * @param String $old_status
+ * @param WP Post Object $post
+ * @return WP_Error|boolean
+ */
 function pd_category_auto_emailer_init($new_status, $old_status, $post) {
     
-    
+    // New class instances
     $Auto_admin = new PD_Category_Auto_Emailer_Admin();
     $Auto_emailer = new PD_Category_Auto_Emailer($post->ID, $post, $Auto_admin);
     
-     $Auto_emailer->_log('Prepare auto mailer');
+    $Auto_emailer->_log('Prepare auto mailer'); // Log the beginning of the action
      
-     $Auto_emailer->_log($old_status . ' ' . $new_status . ' ' . json_encode($post));
+    $Auto_emailer->_log($old_status . ' ' . $new_status . ' ' . json_encode($post)); // Log status change
     
-    if ( ( $old_status === 'draft' || $old_status === 'auto-draft' || $old_status === 'pending' ) && $new_status === 'publish' ) {
-        
-        // Add in a checkbox option to ignore auto-send
+    // Only continue if the status changes to publish 
+    if ( ( $old_status === 'draft' || $old_status === 'auto-draft' || $old_status === 'pending' ) && $new_status === 'publish' ) { 
         
         // Emailer can be sent
         if($Auto_emailer->can_send()) {
@@ -55,17 +71,10 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
                     return false;
                     
                 } else {
-                    
-                    
-                                        
+                                                            
                     // Send email
-                    $sent = wp_mail($pd_category_auto_emailer_admin->get_pd_from(), '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
-                    /*$sent = array(
-                        'from' => $Auto_admin->get_pd_email(),
-                        'subject' => '[' . get_bloginfo('name') . '] New Article',
-                        'headers' => $Auto_emailer->get_headers()
-                    );*/
-                    //$Auto_emailer->_log($Auto_emailer->get_message());
+                    $sent = wp_mail($Auto_admin->get_pd_email(), '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    // Send debug logging
                     $Auto_emailer->_log(json_encode($sent));
                     $Auto_emailer->_log($Auto_emailer->get_message());
                     $Auto_emailer->_log('Email Sent!');
@@ -74,6 +83,7 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
             }
             
         } else {
+            // Automation failed for whatever reason. Throw a WP Error
             $Auto_emailer->_log('Failed');
             return new WP_Error('pd_auto_emailer_failed', __( 'Article Auto-emailer could not be sent', 'pd-category-auto-emailer'));
             
@@ -83,42 +93,46 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
     
 }
 
-
-/*
-function pd_category_auto_emailer_init($post_ID, $post, $update) {
-    
-    $Auto_emailer = new PD_Category_Auto_Emailer($post_ID, $post, $update);
-   
-    if($Auto_emailer->can_send()) {
-    
-        $Auto_emailer->pre_email();
-        
-    }
-    
-    
-}*/
-
+/**
+ * PD Category Auto Emailer
+ * 
+ * Emails a comma-separated list of recipients when an article is published to a
+ * specific category
+ */
 class PD_Category_Auto_Emailer {
     
+    /**
+     * Constructor
+     *  
+     * @param Int $post_ID
+     * @param WP Post Object $post
+     * @param PD_Category_Auto_Emailer_Admin $admin
+     */
     public function __construct($post_ID, $post, $admin) {
         
+        // Assign variables
         $this->post_id = $post_ID;
         $this->post = $post;
-        $this->template_path = plugin_dir_url(__FILE__) . 'templates/default.html';
         $this->admin = $admin;
+        $this->emails = array();
+        $this->template = '';
         
         // debugging / logging
         $this->debug = true;
-        
-        $this->emails = array();
-        $this->template = '';
     }
     
+    /**
+     * Log
+     * 
+     * Custom logging function to output to a local activity log
+     * @param String $message
+     * @return boolean
+     */
     public function _log($message) {
-        
-        //if($this->debug == false) {
-        //    return false;
-        //}
+        // Only log if debug is set to false
+        if($this->debug == false) {
+            return false;
+        }
         
         $log = fopen(plugin_dir_path( __FILE__ ) . 'errorlog.txt', "a") or die('Could not open log file');
         fwrite($log, '[' . date('Y-m-d H:i:s') . '] - ' . $message . "\r\n");
@@ -126,12 +140,10 @@ class PD_Category_Auto_Emailer {
 
     }
     
-    
-    
     /**
      * Get Headers
      * 
-     * Returns email headers
+     * Returns properly formatted email headers for content and Bcc
      * @return string
      */
     public function get_headers() {
@@ -206,6 +218,7 @@ class PD_Category_Auto_Emailer {
      * 
      * Prepares the content, addresses, sent flag and authority to send the auto
      * email
+     * @return boolean
      */
     public function pre_email() {
         
@@ -254,20 +267,8 @@ class PD_Category_Auto_Emailer {
      * @return String
      */
     private function _prepare_template() {
-       // print_r(scandir('../wp-content/plugins/pd-category-auto-emailer'));
-        //
         
-        // Hack while on dev
-        /*$arrContextOptions=array(
-            "ssl"=>array(
-                "verify_peer"=>false,
-                "verify_peer_name"=>false,
-            ),
-        );  
-        
-        $html = file_get_contents($this->template_path, false, stream_context_create($arrContextOptions));*/
-        
-        // Correct code. Change back on live
+        // HTML is hard baked into the plugin due to server shenanigans
         $html = $this->get_html();
                         
         // Replace blog name
@@ -305,10 +306,9 @@ class PD_Category_Auto_Emailer {
             if(strlen($pd_cat_email) > 0) {
                 
                 $emails_arr = explode(",", $pd_cat_email);
-                
+                // Merge everything together
                 $emails = array_merge($emails, $emails_arr);
                 
-                //$emails[] = $pd_cat_email;
             }
         }
         
@@ -318,145 +318,149 @@ class PD_Category_Auto_Emailer {
     
     private function get_html() {
         return '<!doctype html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>New Notification From $$BLOGNAME$$</title>
-    <style>
-    /* -------------------------------------
-        INLINED WITH htmlemail.io/inline
-    ------------------------------------- */
-    /* -------------------------------------
-        RESPONSIVE AND MOBILE FRIENDLY STYLES
-    ------------------------------------- */
-    @media only screen and (max-width: 620px) {
-      table[class=body] h1 {
-        font-size: 28px !important;
-        margin-bottom: 10px !important;
-      }
-      table[class=body] p,
-            table[class=body] ul,
-            table[class=body] ol,
-            table[class=body] td,
-            table[class=body] span,
-            table[class=body] a {
-        font-size: 16px !important;
-      }
-      table[class=body] .wrapper,
-            table[class=body] .article {
-        padding: 10px !important;
-      }
-      table[class=body] .content {
-        padding: 0 !important;
-      }
-      table[class=body] .container {
-        padding: 0 !important;
-        width: 100% !important;
-      }
-      table[class=body] .main {
-        border-left-width: 0 !important;
-        border-radius: 0 !important;
-        border-right-width: 0 !important;
-      }
-      table[class=body] .btn table {
-        width: 100% !important;
-      }
-      table[class=body] .btn a {
-        width: 100% !important;
-      }
-      table[class=body] .img-responsive {
-        height: auto !important;
-        max-width: 100% !important;
-        width: auto !important;
-      }
-    }
+                    <html>
+                      <head>
+                        <meta name="viewport" content="width=device-width">
+                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+                        <title>New Notification From $$BLOGNAME$$</title>
+                        <style>
+                        /* -------------------------------------
+                            INLINED WITH htmlemail.io/inline
+                        ------------------------------------- */
+                        /* -------------------------------------
+                            RESPONSIVE AND MOBILE FRIENDLY STYLES
+                        ------------------------------------- */
+                        @media only screen and (max-width: 620px) {
+                          table[class=body] h1 {
+                            font-size: 28px !important;
+                            margin-bottom: 10px !important;
+                          }
+                          table[class=body] p,
+                                table[class=body] ul,
+                                table[class=body] ol,
+                                table[class=body] td,
+                                table[class=body] span,
+                                table[class=body] a {
+                            font-size: 16px !important;
+                          }
+                          table[class=body] .wrapper,
+                                table[class=body] .article {
+                            padding: 10px !important;
+                          }
+                          table[class=body] .content {
+                            padding: 0 !important;
+                          }
+                          table[class=body] .container {
+                            padding: 0 !important;
+                            width: 100% !important;
+                          }
+                          table[class=body] .main {
+                            border-left-width: 0 !important;
+                            border-radius: 0 !important;
+                            border-right-width: 0 !important;
+                          }
+                          table[class=body] .btn table {
+                            width: 100% !important;
+                          }
+                          table[class=body] .btn a {
+                            width: 100% !important;
+                          }
+                          table[class=body] .img-responsive {
+                            height: auto !important;
+                            max-width: 100% !important;
+                            width: auto !important;
+                          }
+                        }
 
-    /* -------------------------------------
-        PRESERVE THESE STYLES IN THE HEAD
-    ------------------------------------- */
-    @media all {
-      .ExternalClass {
-        width: 100%;
-      }
-      .ExternalClass,
-            .ExternalClass p,
-            .ExternalClass span,
-            .ExternalClass font,
-            .ExternalClass td,
-            .ExternalClass div {
-        line-height: 100%;
-      }
-      .apple-link a {
-        color: inherit !important;
-        font-family: inherit !important;
-        font-size: inherit !important;
-        font-weight: inherit !important;
-        line-height: inherit !important;
-        text-decoration: none !important;
-      }
-      .btn-primary table td:hover {
-        background-color: #34495e !important;
-      }
-      .btn-primary a:hover {
-        background-color: #34495e !important;
-        border-color: #34495e !important;
-      }
-    }
-    </style>
-  </head>
-  <body class="" style="background-color: #f6f6f6; font-family: sans-serif; -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.4; margin: 0; padding: 0; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;">
-    <table border="0" cellpadding="0" cellspacing="0" class="body" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background-color: #f6f6f6;">
-      <tr>
-        <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">&nbsp;</td>
-        <td class="container" style="font-family: sans-serif; font-size: 14px; vertical-align: top; display: block; Margin: 0 auto; max-width: 580px; padding: 10px; width: 580px;">
-          <div class="content" style="box-sizing: border-box; display: block; Margin: 0 auto; max-width: 580px; padding: 10px;">
+                        /* -------------------------------------
+                            PRESERVE THESE STYLES IN THE HEAD
+                        ------------------------------------- */
+                        @media all {
+                          .ExternalClass {
+                            width: 100%;
+                          }
+                          .ExternalClass,
+                                .ExternalClass p,
+                                .ExternalClass span,
+                                .ExternalClass font,
+                                .ExternalClass td,
+                                .ExternalClass div {
+                            line-height: 100%;
+                          }
+                          .apple-link a {
+                            color: inherit !important;
+                            font-family: inherit !important;
+                            font-size: inherit !important;
+                            font-weight: inherit !important;
+                            line-height: inherit !important;
+                            text-decoration: none !important;
+                          }
+                          .btn-primary table td:hover {
+                            background-color: #34495e !important;
+                          }
+                          .btn-primary a:hover {
+                            background-color: #34495e !important;
+                            border-color: #34495e !important;
+                          }
+                        }
+                        </style>
+                      </head>
+                      <body class="" style="background-color: #f6f6f6; font-family: sans-serif; -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.4; margin: 0; padding: 0; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;">
+                        <table border="0" cellpadding="0" cellspacing="0" class="body" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background-color: #f6f6f6;">
+                          <tr>
+                            <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">&nbsp;</td>
+                            <td class="container" style="font-family: sans-serif; font-size: 14px; vertical-align: top; display: block; Margin: 0 auto; max-width: 580px; padding: 10px; width: 580px;">
+                              <div class="content" style="box-sizing: border-box; display: block; Margin: 0 auto; max-width: 580px; padding: 10px;">
 
-            <!-- START CENTERED WHITE CONTAINER -->
-            <span class="preheader" style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">New Notification from $$BLOGNAME$$</span>
-            <table class="main" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background: #ffffff; border-radius: 3px;">
+                                <!-- START CENTERED WHITE CONTAINER -->
+                                <span class="preheader" style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">New Notification from $$BLOGNAME$$</span>
+                                <table class="main" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background: #ffffff; border-radius: 3px;">
 
-              <!-- START MAIN CONTENT AREA -->
-              <tr>
-                <td class="wrapper" style="font-family: sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 20px;">
-                  <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
-                    <tr>
-                      <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">
-                        '. $this->format_message() .
-                            
-                        '
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
+                                  <!-- START MAIN CONTENT AREA -->
+                                  <tr>
+                                    <td class="wrapper" style="font-family: sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 20px;">
+                                      <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
+                                        <tr>
+                                          <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">
+                                            '. $this->format_message() .'
+                                        </td>
+                                      </tr>
+                                    </table>
+                                  </td>
+                                </tr>
 
-            <!-- END MAIN CONTENT AREA -->
-            </table>
+                              <!-- END MAIN CONTENT AREA -->
+                              </table>
 
-            <!-- START FOOTER -->
-            <div class="footer" style="clear: both; Margin-top: 10px; text-align: center; width: 100%;">
-              <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
-                <tr>
-                  <td class="content-block" style="font-family: sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
-                    <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">This email was automatically generated by $$BLOGNAME$$ on ' . date('j F Y H:i') . '</span>
-                    <br>Please reply to this email if you no longer wish to receive these notifications.
-                  </td>
-                </tr>
-              </table>
-            </div>
-            <!-- END FOOTER -->
+                              <!-- START FOOTER -->
+                              <div class="footer" style="clear: both; Margin-top: 10px; text-align: center; width: 100%;">
+                                <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
+                                  <tr>
+                                    <td class="content-block" style="font-family: sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
+                                      <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">This email was automatically generated by $$BLOGNAME$$ on ' . date('j F Y H:i') . '</span>
+                                      <br>Please reply to this email if you no longer wish to receive these notifications.
+                                    </td>
+                                  </tr>
+                                </table>
+                              </div>
+                              <!-- END FOOTER -->
 
-          <!-- END CENTERED WHITE CONTAINER -->
-          </div>
-        </td>
-        <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">&nbsp;</td>
-      </tr>
-    </table>
-  </body>
-</html>';
+                            <!-- END CENTERED WHITE CONTAINER -->
+                            </div>
+                          </td>
+                          <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">&nbsp;</td>
+                        </tr>
+                      </table>
+                    </body>
+                  </html>';
     }
     
+    /**
+     * Format Message
+     * 
+     * Gets the user generated HTML and formats it for the mailer
+     * @return String
+     */
     private function format_message() {
         $body = $this->admin->get_pd_body_content();
         
@@ -477,17 +481,28 @@ class PD_Category_Auto_Emailer {
 /* Category Auto-Email Fields ----------------------------------------------- */
 add_action('category_add_form_fields', 'pd_taxonomy_add_new_meta_field', 10, 1);
 add_action('category_edit_form_fields', 'pd_taxonomy_edit_meta_field', 10, 1);
-//Product Cat Create page
+
+/**
+ * PD Taxonomy Add New Meta Field
+ * 
+ * Renders meta fields on the category overview page
+ */
 function pd_taxonomy_add_new_meta_field() {
     ?>   
     <div class="form-field">
         <label for="pd_cat_email"><?php _e('Category Auto Email', 'pd'); ?></label>
         <input type="text" name="pd_cat_email" id="pd_cat_email">
-        <p class="description"><?php _e('Enter the email address of a person to receive an email every time a post is made to this category', 'pd'); ?></p>
+        <p class="description"><?php _e('Enter the email address of a person to receive an email every time a post is made to this category. You can enter multiple addresses separated by a comma', 'pd'); ?></p>
     </div>
     <?php
 }
-//Product Cat Edit page
+
+/**
+ * PD Taxonomy Edit Meta Field
+ * 
+ * Renders meta field on the Edit Category page
+ * @param WP Term Object $term
+ */
 function pd_taxonomy_edit_meta_field($term) {
     //getting term ID
     $term_id = $term->term_id;
@@ -498,7 +513,7 @@ function pd_taxonomy_edit_meta_field($term) {
         <th scope="row" valign="top"><label for="pd_cat_email"><?php _e('Category Auto Email', 'pd'); ?></label></th>
         <td>
             <input type="text" name="pd_cat_email" id="pd_cat_email" value="<?php echo esc_attr($pd_cat_email) ? esc_attr($pd_cat_email) : ''; ?>">
-            <p class="description"><?php _e('Enter the email address of a person to receive an email every time a post is made to this category', 'pd'); ?></p>
+            <p class="description"><?php _e('Enter the email address of a person to receive an email every time a post is made to this category. You can enter multiple addresses separated by a comma', 'pd'); ?></p>
         </td>
     </tr>
     <?php
@@ -506,7 +521,13 @@ function pd_taxonomy_edit_meta_field($term) {
 
 add_action('edited_category', 'pd_save_taxonomy_custom_meta', 10, 1);
 add_action('create_category', 'pd_save_taxonomy_custom_meta', 10, 1);
-// Save extra taxonomy fields callback function.
+
+/**
+ * PD Save Taxonomy Customer Meta
+ * 
+ * Saves the field to the term meta tables
+ * @param Int $term_id
+ */
 function pd_save_taxonomy_custom_meta($term_id) {
     $pd_cat_email = filter_input(INPUT_POST, 'pd_cat_email');
     update_term_meta($term_id, 'pd_cat_email', $pd_cat_email);

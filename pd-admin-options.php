@@ -1,17 +1,30 @@
 <?php
+/**
+ * PD Category Auto Emailer Admin Class
+ * 
+ * Handles all interactions with the admin section of the plugin
+ */
 class PD_Category_Auto_Emailer_Admin {
     
     public function __construct() {
-        
-       // $this->init_menu_item();
-                
+                        
     }
     
+    /**
+     * Init Menu Item
+     * 
+     * Assigns the menu item
+     */
     public function init_menu_item() {
         
         add_menu_page( 'Category Auto Emailer Settings', 'Auto-Emailer', 'manage_options', 'pd_category_auto_emailer_plugin', array($this, 'pd_auto_emailer_admin_init') );
     }
         
+    /**
+     * PD Auto Emailer Admin Init
+     * 
+     * Checks permissions and renders the admin section
+     */
     public function pd_auto_emailer_admin_init() {
         
         if ( !current_user_can( 'manage_options' ) )  {
@@ -28,16 +41,26 @@ class PD_Category_Auto_Emailer_Admin {
         
     }
     
+    /**
+     * Admin Save Options
+     * 
+     * Saves the POSTed options
+     */
     private function admin_save_options() {
         
         $this->set_pd_from_name();
         $this->set_pd_from_email();
         $this->set_pd_bcc();
         $this->set_pd_body_content();
-        
-        
+                
     }
     
+    /**
+     * Set PD From Name
+     * 
+     * Sets the FROMn NAME field
+     * @return void
+     */
     private function set_pd_from_name() {
         
         $option_name = 'pd_from_name' ;
@@ -57,6 +80,12 @@ class PD_Category_Auto_Emailer_Admin {
         }
     }
     
+    /**
+     * Set PD From Email
+     * 
+     * Sets the FROM EMAIL field
+     * @return void
+     */
     private function set_pd_from_email() {
         
         $option_name = 'pd_from_email' ;
@@ -64,18 +93,22 @@ class PD_Category_Auto_Emailer_Admin {
 
         if ( get_option( $option_name ) !== false ) {
 
-            // The option already exists, so we just update it.
             update_option( $option_name, $new_value );
 
         } else {
 
-            // The option hasn't been added yet. We'll add it with $autoload set to 'no'.
             $deprecated = null;
             $autoload = 'no';
             add_option( $option_name, $new_value, $deprecated, $autoload );
         }
     }
     
+    /**
+     * Set PD Bcc
+     * 
+     * Sets the email addresses to BCC
+     * @return void
+     */
     private function set_pd_bcc() {
         
         $option_name = 'pd_bcc' ;
@@ -83,36 +116,44 @@ class PD_Category_Auto_Emailer_Admin {
 
         if ( get_option( $option_name ) !== false ) {
 
-            // The option already exists, so we just update it.
             update_option( $option_name, $new_value );
 
         } else {
 
-            // The option hasn't been added yet. We'll add it with $autoload set to 'no'.
             $deprecated = null;
             $autoload = 'no';
             add_option( $option_name, $new_value, $deprecated, $autoload );
         }
     }
     
+    /**
+     * Set PD Body Content
+     * 
+     * Sets the HTML body content for the emailer
+     * @return void
+     */
     private function set_pd_body_content() {
         $option_name = 'pd_body_content' ;
         $new_value = filter_input(INPUT_POST, 'pd-auto-body') ;
 
         if ( get_option( $option_name ) !== false ) {
 
-            // The option already exists, so we just update it.
             update_option( $option_name, $new_value );
 
         } else {
 
-            // The option hasn't been added yet. We'll add it with $autoload set to 'no'.
             $deprecated = null;
             $autoload = 'no';
             add_option( $option_name, $new_value, $deprecated, $autoload );
         }
     }
     
+    /**
+     * Admin Menu HTML
+     * 
+     * Renders the admin HTML form
+     * @return void
+     */
     private function admin_menu_html() {
         
         $html = '<div class="wrap">';
@@ -159,6 +200,12 @@ class PD_Category_Auto_Emailer_Admin {
         echo $html;
     }
     
+    /**
+     * Get PD From Name
+     * 
+     * Gets the FROM NAME for the email
+     * @return String
+     */
     public function get_pd_from_name() {
         
         $from_name = get_option('pd_from_name', get_bloginfo('name'));
@@ -167,6 +214,12 @@ class PD_Category_Auto_Emailer_Admin {
         
     }
     
+    /**
+     * Get PD Email
+     * 
+     * Gets the FROM EMAIL for the mail
+     * @return String
+     */
     public function get_pd_email() {
         
         $from_email = get_option('pd_from_email', get_option('admin_email'));
@@ -175,6 +228,12 @@ class PD_Category_Auto_Emailer_Admin {
         
     }
     
+    /**
+     * Get PD Bcc
+     * 
+     * Gets the BCC field for the headers. Blank if nothing
+     * @return String
+     */
     public function get_pd_bcc() {
         
         $bcc_emails = get_option('pd_bcc', '');
@@ -183,6 +242,12 @@ class PD_Category_Auto_Emailer_Admin {
         
     }
     
+    /**
+     * Get PD Body Content
+     * 
+     * Gets the emailer body copy
+     * @return String
+     */
     public function get_pd_body_content() {
         
         $body_content = get_option('pd_body_content', $this->default_body_content());
@@ -191,10 +256,16 @@ class PD_Category_Auto_Emailer_Admin {
         
     }
     
+    /**
+     * Default Body Content
+     * 
+     * Gets a default string of body copy in the event that nothing is assigned
+     * @return String
+     */
     private function default_body_content() {
         $html = 'Hi there,
 A new article relevant to you has been posted on $$BLOGNAME$$. Click the link to read:
-<b><a href="$$PERMALINK$$" title="$$POSTNAME$$">$$POSTTITLE$$</a></b>
+<b><a href="$$PERMALINK$$" title="$$POSTTITLE$$">$$POSTTITLE$$</a></b>
 <b>We welcome daily  news for placement</b> and we invite you to send us any events as they happen.
 
 Kind regards,
@@ -204,6 +275,12 @@ The <b>$$BLOGNAME$$</b> Team';
         
     }
     
+    /**
+     * Body Content Field
+     * 
+     * Generates the WYSIWYG interface for adding the HTML content for the email
+     * @return String
+     */
     private function body_content_field() {
         ob_start();
         wp_editor($this->get_pd_body_content(), 'pd-auto-body', array(
@@ -216,6 +293,5 @@ The <b>$$BLOGNAME$$</b> Team';
         return $ret;   
         
     }
-    
     
 }
