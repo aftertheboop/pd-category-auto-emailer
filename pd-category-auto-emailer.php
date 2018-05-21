@@ -14,16 +14,25 @@ Text Domain: pd-category-auto-emailer
 */
 
 add_action('admin_menu', 'pd_category_auto_emailer_admin');
+include_once('pd-admin-options.php');
+
+$pd_category_auto_emailer_admin = new PD_Category_Auto_Emailer_Admin();
 
 function pd_category_auto_emailer_admin() {
-    include_once('pd-admin-options.php');
+    
+    global $pd_category_auto_emailer_admin;
+    
+    $pd_category_auto_emailer_admin->init_menu_item();
 }
+
 
 add_action( 'transition_post_status', 'pd_category_auto_emailer_init', 10, 3 );
 
 function pd_category_auto_emailer_init($new_status, $old_status, $post) {
     
-    $Auto_emailer = new PD_Category_Auto_Emailer($post->ID, $post);
+    
+    $Auto_admin = new PD_Category_Auto_Emailer_Admin();
+    $Auto_emailer = new PD_Category_Auto_Emailer($post->ID, $post, $Auto_admin);
     
      $Auto_emailer->_log('Prepare auto mailer');
      
@@ -46,11 +55,19 @@ function pd_category_auto_emailer_init($new_status, $old_status, $post) {
                     return false;
                     
                 } else {
+                    
+                    
                                         
                     // Send email
                     $sent = wp_mail($pd_category_auto_emailer_admin->get_pd_from(), '[' . get_bloginfo('name') . '] New Article', $Auto_emailer->get_message(), $Auto_emailer->get_headers());
+                    /*$sent = array(
+                        'from' => $Auto_admin->get_pd_email(),
+                        'subject' => '[' . get_bloginfo('name') . '] New Article',
+                        'headers' => $Auto_emailer->get_headers()
+                    );*/
                     //$Auto_emailer->_log($Auto_emailer->get_message());
                     $Auto_emailer->_log(json_encode($sent));
+                    $Auto_emailer->_log($Auto_emailer->get_message());
                     $Auto_emailer->_log('Email Sent!');
                 }
                 
@@ -83,11 +100,12 @@ function pd_category_auto_emailer_init($post_ID, $post, $update) {
 
 class PD_Category_Auto_Emailer {
     
-    public function __construct($post_ID, $post) {
+    public function __construct($post_ID, $post, $admin) {
         
         $this->post_id = $post_ID;
         $this->post = $post;
         $this->template_path = plugin_dir_url(__FILE__) . 'templates/default.html';
+        $this->admin = $admin;
         
         // debugging / logging
         $this->debug = true;
@@ -120,7 +138,7 @@ class PD_Category_Auto_Emailer {
         
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
-        $headers .= "Bcc: " . $this->get_emails(true) . ',' . $pd_category_auto_emailer_admin->get_pd_bcc();
+        $headers .= "Bcc: " . $this->get_emails(true) . ',' . $this->admin->get_pd_bcc();
         
         return $headers;
         
@@ -258,7 +276,7 @@ class PD_Category_Auto_Emailer {
         // Replace article permalink
         $html = str_replace('$$PERMALINK$$', get_the_permalink($this->post_id), $html);
         // Replace article title
-        $html = str_replace('$$POSTTITLE$$', htmlentities(get_the_title($this->post_id)), $html);
+        $html = str_replace('$$POSTTITLE$$', get_the_title($this->post_id), $html);
         
         return $html;
         
@@ -404,16 +422,9 @@ class PD_Category_Auto_Emailer {
                   <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
                     <tr>
                       <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;">
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">Dear school,</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">A new article about your school has been posted on $$BLOGNAME$$. Click the link to read:</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b><a href="$$PERMALINK$$" title="$$POSTNAME$$">$$POSTTITLE$$</a></b></p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b>Please share on your school\'s Facebook page.</b></p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b>Please send your school news to <a href="mailto:awsumnews@tiemedia.co.za">awsumnews@tiemedia.co.za</a>.</b></p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;"><b>We welcome daily school news for placement</b> and we invite you to send us any sport (internal and external), cultural and academic achievements as they happen. No school is limited with regards to the amount of news.</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">More than 1 700 schools countrywide are part of this network and the news is loaded per region to provide each school with national and regional exposure - free of charge. We publish text, video and audio clips.</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">&nbsp;</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">Kind regards,</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">The <b>$$BLOGNAME$$</b> Team</p>
+                        '. $this->format_message() .
+                            
+                        '
                       </td>
                     </tr>
                   </table>
@@ -444,6 +455,22 @@ class PD_Category_Auto_Emailer {
     </table>
   </body>
 </html>';
+    }
+    
+    private function format_message() {
+        $body = $this->admin->get_pd_body_content();
+        
+        $body_arr = explode("\n", $body);
+        
+        foreach($body_arr as $k => $b) {
+            if(strlen($b) > 1) {
+                $body_arr[$k] = '<p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">' . $b . '</p>';
+            } else {
+                $body_arr[$k] = '<p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">&nbsp;</p>';
+            }
+        }
+        
+        return implode("\n", $body_arr);
     }
 }
 
